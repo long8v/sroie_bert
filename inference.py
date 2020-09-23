@@ -74,7 +74,7 @@ result_data = {}
 for key, value in preprocess_data.items():
     try:
         result_data[key] = model.predict(value[:512])
-        # result_data[key].extend(model.predict(value[512:1024]))
+        result_data[key].extend(model.predict(value[512:1024]))
     except Exception as e :
         print('fail {}'.format(key))
         print(e)
