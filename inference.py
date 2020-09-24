@@ -45,7 +45,6 @@ model = Ner('/home/long8v/sroie_data/row_token_added')
 pretrained_weights = 'bert-base-uncased'
 tokenizer = BertTokenizer.from_pretrained(pretrained_weights)
 
-
 # In[114]:
 
 
@@ -135,7 +134,7 @@ for key, value in data_dict.items():
 
 result_data = {}
 for key, value in preprocess_data.items():
-    result_data[key] = model.prewdict(value[:512])
+    result_data[key] = model.predict(value[:512])
     result_data[key].extend(model.predict(value[512:1024]))
 
 
