@@ -1,76 +1,39 @@
-#!/usr/bin/env python
 # coding: utf-8
-
-# In[97]:
-
 
 import sys
 import glob
 import json
 import torch
 import pandas as pd
+import re
+from transformers import *
 sys.path.append('/home/long8v/BERT-NER')
 from bert import Ner
 
 
-# # Data Loading
-
-# In[98]:
-
-
+## Data Loading
 path = '/home/long8v/ICDAR-2019-SROIE/task3/data/data_dict.pth'
 data_dict = torch.load(path)
 data_dict = {key:value[0] for key, value in data_dict.items()}
 
+## inference
 
-# # inference
-
-# In[99]:
-
-
-import re
-import pickle
-from transformers import *
-
-
-# In[112]:
-
-
-model = Ner('/home/long8v/sroie_data/row_token_added')
-
-
-# In[113]:
-
-
+## model loading
+model = Ner('/home/long8v/sroie_bert/experiment/{}'.format(input('your experiment name is ...')))
 pretrained_weights = 'bert-base-uncased'
 tokenizer = BertTokenizer.from_pretrained(pretrained_weights)
-
-# In[114]:
-
-
 
 re_int = re.compile('\d+')
 re_float = re.compile('(\d+\.\d+)')
 re_percent = re.compile('(\d+.?\d+%)')
 re_date = re.compile('(\d{2}[/-]\d{2}[/-]\d{2,4})')
 re_row = re.compile('\n')
-
-
-re_dict = {re_float:'float', re_percent:' percent ', re_date:' date ', re_int:' int ', re_row:' row '}
-
-re.findall(re_int, 'NO.33')
-
-
-# In[115]:
-
+re_dict = {re_float:' float ', re_percent:' percent ', re_date:' date ', re_int:' int ', re_row:' row '}
 
 def re_text(text):
     for key, value in re_dict.items():
         text = key.sub(value, text)
     return text
-
-
-# In[116]:
 
 
 def re_find_pattern(text):
@@ -81,18 +44,12 @@ def re_find_pattern(text):
         return False
 
 
-# In[117]:
-
-
 def re_find_which_pattern(text):
     pattern = re.compile('float|percent|date|int|row')
     try:
         return pattern.findall(text)[0]
     except:
         return text
-
-
-# In[118]:
 
 
 def get_re_text(text):
@@ -103,23 +60,15 @@ def get_re_text(text):
     return patterns
 
 
-# In[119]:
-
-
 def get_tokenized_word(text):
     token_word = tokenizer.tokenize(text)
     return token_word
-
-
-# In[120]:
 
 
 def preprocess(text):
     text = re_text(text)
     return text
 
-
-# In[121]:
 
 
 preprocess_data = {}
@@ -129,20 +78,22 @@ for key, value in data_dict.items():
     re_data[key] = get_re_text(value)
 
 
-# In[122]:
-
-
 result_data = {}
 for key, value in preprocess_data.items():
-    result_data[key] = model.predict(value[:512])
-    result_data[key].extend(model.predict(value[512:1024]))
-
-
-# In[123]:
+    cut_index = 512
+    try:
+        while 1:
+            if value[cut_index] != ' ':
+                cut_index -= 1
+            else:
+                break
+    except:
+        pass
+    result_data[key] = model.predict(value[:cut_index])
+    result_data[key].extend(model.predict(value[cut_index:1024]))
 
 
 import nltk
-nltk.download('averaged_perceptron_tagger')
 from nltk import pos_tag
 from nltk.tree import Tree
 from nltk.chunk import conlltags2tree
@@ -183,8 +134,6 @@ def get_result_json(result_list):
     return original_text
 
 
-# In[125]:
-
 
 from collections import defaultdict
 
@@ -203,12 +152,11 @@ for key, value in result_data.items():
             try:
                 v_with_space = list(filter(lambda e: e, re.findall(pattern, data_dict[key])))
                 new_json_data[k] = v_with_space
+                if not v_with_space:
+                    print(key, k, words)
             except Exception as e:
                 pass
     json_data[key] = new_json_data
-
-
-# In[139]:
 
 
 new_json_data = {}
@@ -231,9 +179,6 @@ for key, value in json_data.items():
     new_json_data[key] = new_dict
 
 
-# In[140]:
-
-
 path = '/home/long8v/docrv2_sroie/submission/SROIE_example_t3'
 for key, value in new_json_data.items():
     with open('{}/{}.txt'.format(path, key), 'w') as f:
@@ -243,11 +188,8 @@ for key, value in new_json_data.items():
         f.write('    "address": "{}",\n'.format(value['address']))
         f.write('    "total": "{}"\n'.format(value['total']))
         f.write('}')
-#         print('{} saved.'.format(key))
 
-
-# In[141]:
-
+## zip file saving
 
 in_path = '/home/long8v/docrv2_sroie/submission/SROIE_example_t3'
 out_path = '/home/long8v/docrv2_sroie/submission/SROIE_example_t3'
@@ -265,16 +207,3 @@ for folder, subfolders, files in os.walk(in_path):
                              compress_type = zipfile.ZIP_DEFLATED)
 print('zip saved!')
 submission_zip.close()
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
